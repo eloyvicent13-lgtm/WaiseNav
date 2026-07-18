@@ -1,0 +1,63 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  // Swap to "mysql" or "postgresql" if your Pterodactyl setup has a DB
+  // service; DATABASE_URL shape changes accordingly, code does not.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  routes    Route[]
+  favorites Favorite[]
+  reports   Report[]
+}
+
+model Route {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  originLat     Float
+  originLng     Float
+  destLat       Float
+  destLng       Float
+  destName      String
+  mode          String?  // driving | cycling | walking
+  originSource  String?  // e.g. "voice_command", "search", "favorite"
+  createdAt     DateTime @default(now())
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  label     String   // 'home' | 'work' | free text
+  name      String
+  address   String?
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
+
+  @@unique([userId, label])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // radar_movil | accidente | obstaculo | policia
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}

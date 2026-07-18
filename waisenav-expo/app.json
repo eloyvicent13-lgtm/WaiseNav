@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "WaiseNav",
+    "slug": "waisenav",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0f14"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.waisenav.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "WaiseNav necesita el micrófono para escuchar tus comandos de voz al asistente de IA.",
+        "NSLocationWhenInUseUsageDescription": "WaiseNav necesita tu ubicación para mostrar el mapa, calcular tu velocidad y trazar rutas.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "WaiseNav necesita tu ubicación en segundo plano para seguir navegando cuando la app no está en primer plano.",
+        "NSSpeechRecognitionUsageDescription": "Se usa para transcribir tus comandos de voz.",
+        "UIBackgroundModes": ["audio", "location"]
+      }
+    },
+    "android": {
+      "package": "com.waisenav.app"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "WaiseNav necesita tu ubicación para navegar."
+        }
+      ]
+    ],
+    "extra": {
+      "apiHost": "149.202.84.78",
+      "apiPort": "8164"
+    }
+  }
+}

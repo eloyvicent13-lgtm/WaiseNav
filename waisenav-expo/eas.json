@@ -1,0 +1,23 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "production": {
+      "distribution": "store",
+      "ios": {
+        "autoIncrement": false
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "TU_APPLE_ID_EMAIL_AQUI",
+        "ascAppId": "TU_APP_STORE_CONNECT_APP_ID_AQUI",
+        "appleTeamId": "TU_APPLE_TEAM_ID_AQUI"
+      }
+    }
+  }
+}

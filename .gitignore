@@ -1,0 +1,16 @@
+# Backend
+backend-pterodactyl/node_modules/
+backend-pterodactyl/.env
+backend-pterodactyl/prisma/data/
+backend-pterodactyl/*.db
+backend-pterodactyl/*.db-journal
+backend-pterodactyl/*.zip
+
+# Expo app
+waisenav-expo/node_modules/
+waisenav-expo/.expo/
+waisenav-expo/build.ipa
+waisenav-expo/*.ipa
+
+# OS / editor
+.DS_Store
