@@ -16,7 +16,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 // is not in our code at all — it's Metro/Hermes/native linking. If it
 // shows red text, the bug is somewhere in the real tree below and we can
 // re-enable pieces one at a time. Flip back to false once diagnosed.
-const DIAGNOSTIC_MODE = true;
+const DIAGNOSTIC_MODE = false;
 
 const Stack = createNativeStackNavigator();
 
