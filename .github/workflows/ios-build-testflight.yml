@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Auto-increment build version
-        run: node scripts/bump-build-number.js
+        run: node scripts/bump-build-number.js ${{ github.run_number }}
 
       - name: Stage app.json changes for EAS CLI
         run: git add app.json

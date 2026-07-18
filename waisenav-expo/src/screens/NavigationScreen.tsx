@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, Pressable, Text } from 'react-native';
+import { View, StyleSheet, Alert, Pressable, Text, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -73,6 +73,8 @@ const REPORT_MARKER: Record<string, { icon: keyof typeof MaterialCommunityIcons.
 export default function NavigationScreen() {
   const mapRef = useRef<MapView>(null);
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [speedKmh, setSpeedKmh] = useState(0);
   const [assistantStatus, setAssistantStatus] = useState<AssistantStatus>('idle');
@@ -150,40 +152,61 @@ export default function NavigationScreen() {
 
   useEffect(() => {
     let subscription: Location.LocationSubscription | undefined;
+    let cancelled = false;
 
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'WaiseNav necesita acceso a tu ubicación.');
-        return;
-      }
-
-      const initial = await Location.getCurrentPositionAsync({});
-      const start = { latitude: initial.coords.latitude, longitude: initial.coords.longitude };
-      setUserLocation(start);
-      setInitialRegion({ ...start, latitudeDelta: 0.01, longitudeDelta: 0.01 });
-
-      subscription = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 5 },
-        (loc) => {
-          const speedMs = loc.coords.speed ?? 0;
-          setSpeedKmh(Math.max(0, speedMs * 3.6));
-          sample(speedMs);
-
-          const here = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          setUserLocation(here);
-
-          if (navPhaseRef.current === 'navigating' && routeRef.current) {
-            updateNavigationProgress(here, loc.coords.heading ?? -1, speedMs);
-            checkRadarProximity(here);
-            maybeFetchSpeedLimit(here, speedMs);
-          }
+      setLocationError(null);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setLocationError('Necesitamos permiso de ubicación para mostrar el mapa. Actívalo en Ajustes > WaiseNav > Ubicación.');
+          return;
         }
-      );
+
+        // getCurrentPositionAsync has no built-in timeout and can hang
+        // indefinitely indoors / with a cold GPS fix — race it against a
+        // manual timeout so the app never gets stuck on a blank screen.
+        const initial = await Promise.race([
+          Location.getCurrentPositionAsync({}),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          ),
+        ]);
+        if (cancelled) return;
+
+        const start = { latitude: initial.coords.latitude, longitude: initial.coords.longitude };
+        setUserLocation(start);
+        setInitialRegion({ ...start, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+
+        subscription = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 5 },
+          (loc) => {
+            const speedMs = loc.coords.speed ?? 0;
+            setSpeedKmh(Math.max(0, speedMs * 3.6));
+            sample(speedMs);
+
+            const here = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+            setUserLocation(here);
+
+            if (navPhaseRef.current === 'navigating' && routeRef.current) {
+              updateNavigationProgress(here, loc.coords.heading ?? -1, speedMs);
+              checkRadarProximity(here);
+              maybeFetchSpeedLimit(here, speedMs);
+            }
+          }
+        );
+      } catch {
+        if (!cancelled) {
+          setLocationError('No se pudo obtener tu ubicación. Comprueba que el GPS está activado.');
+        }
+      }
     })();
 
-    return () => subscription?.remove();
-  }, []);
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [retryTick]);
 
   /** Bearing of the route itself at vertex `idx`, looking ~40m ahead. */
   function routeBearingAt(geometry: LatLng[], idx: number): number {
@@ -582,7 +605,30 @@ export default function NavigationScreen() {
   }
 
   if (!initialRegion || !userLocation) {
-    return <View style={styles.container} />;
+    return (
+      <View style={styles.loadingContainer}>
+        {locationError ? (
+          <>
+            <Ionicons name="location-outline" size={40} color="#ff453a" style={{ marginBottom: 12 }} />
+            <Text style={styles.loadingText}>{locationError}</Text>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => {
+                setLocationError(null);
+                setRetryTick((t) => t + 1);
+              }}
+            >
+              <Text style={styles.retryText}>Reintentar</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <ActivityIndicator color="#0a84ff" size="large" style={{ marginBottom: 16 }} />
+            <Text style={styles.loadingText}>Buscando tu ubicación...</Text>
+          </>
+        )}
+      </View>
+    );
   }
 
   const isNavigating = navPhase === 'navigating';
@@ -761,6 +807,22 @@ export default function NavigationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0f14' },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#0b0f14',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingText: { color: '#fff', fontSize: 15, textAlign: 'center', lineHeight: 21 },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: '#0a84ff',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   topRight: { position: 'absolute', top: 56, right: 16, alignItems: 'flex-end' },
   bottomLeft: { position: 'absolute', bottom: 24, left: 16 },
   fab: {
