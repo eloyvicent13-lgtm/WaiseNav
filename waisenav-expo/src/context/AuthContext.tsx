@@ -22,12 +22,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Session restore is intentionally minimal: presence of a stored token
     // just unlocks the app shell; /auth/me can re-validate lazily on first
     // authenticated request.
-    // .catch() matters here: an unhandled rejection from a native module
-    // call on a background thread is treated as fatal by RN in release
-    // builds (RCTFatal) — without it, any SecureStore hiccup on first
-    // launch (e.g. no Keychain item yet) could crash the whole app before
-    // a single frame renders.
-    SecureStore.getItemAsync(TOKEN_KEY)
+    // Race against a timeout too, not just .catch() — a native module call
+    // that never *settles* (hangs) rather than rejecting would otherwise
+    // leave `loading` true forever, showing nothing but a spinner on a
+    // near-black background indefinitely (indistinguishable from a crash
+    // in a quick look).
+    Promise.race([
+      SecureStore.getItemAsync(TOKEN_KEY),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+    ])
       .catch(() => null)
       .finally(() => setLoading(false));
   }, []);
