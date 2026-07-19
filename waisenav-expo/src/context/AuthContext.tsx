@@ -19,20 +19,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Session restore is intentionally minimal: presence of a stored token
-    // just unlocks the app shell; /auth/me can re-validate lazily on first
-    // authenticated request.
-    // Race against a timeout too, not just .catch() — a native module call
-    // that never *settles* (hangs) rather than rejecting would otherwise
-    // leave `loading` true forever, showing nothing but a spinner on a
-    // near-black background indefinitely (indistinguishable from a crash
-    // in a quick look).
-    Promise.race([
-      SecureStore.getItemAsync(TOKEN_KEY),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
-    ])
-      .catch(() => null)
-      .finally(() => setLoading(false));
+    // BISECTION: SecureStore.getItemAsync() temporarily disabled here.
+    // Two builds in a row crashed at launch with an identical RCTFatal
+    // signature (native-module-callback exception) even after adding
+    // .catch()+timeout around this call — meaning either that guard has a
+    // gap or this was never the actual cause. Removing it entirely as a
+    // single-variable test: if the crash stops, SecureStore is confirmed;
+    // if it doesn't, look elsewhere (react-navigation/react-native-screens
+    // native init, which also runs unconditionally at launch).
+    setLoading(false);
   }, []);
 
   async function login(email: string, password: string) {
