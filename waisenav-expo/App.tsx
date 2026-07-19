@@ -1,25 +1,20 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import NavigationScreen from './src/screens/NavigationScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
-// TEMPORARY bisection flag: real device shows a black screen with zero
-// crash/hang report of any kind, meaning the failure may be happening
-// before our React tree even mounts (native module init, bundle load).
-// This bypasses AuthProvider/NavigationContainer/react-native-maps/every
-// native module we use entirely. If THIS build also shows black, the bug
-// is not in our code at all — it's Metro/Hermes/native linking. If it
-// shows red text, the bug is somewhere in the real tree below and we can
-// re-enable pieces one at a time. Flip back to false once diagnosed.
 const DIAGNOSTIC_MODE = false;
 
-const Stack = createNativeStackNavigator();
-
+// BISECTION step 2: SecureStore was ruled out (identical crash persisted
+// with it fully removed from the launch path). Same crash signature, same
+// binary offsets both times — something else running unconditionally at
+// launch. NavigationContainer/react-native-screens native stack is the
+// next suspect (it inits native view controllers eagerly on mount).
+// Bypassing react-navigation entirely here — direct conditional render,
+// no Stack.Navigator, no NavigationContainer.
 function RootNavigator() {
   const { user, loading } = useAuth();
 
@@ -32,15 +27,7 @@ function RootNavigator() {
     );
   }
 
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
-        <Stack.Screen name="Navigation" component={NavigationScreen} />
-      ) : (
-        <Stack.Screen name="Login" component={LoginScreen} />
-      )}
-    </Stack.Navigator>
-  );
+  return user ? <NavigationScreen /> : <LoginScreen />;
 }
 
 function DiagnosticScreen() {
@@ -67,10 +54,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <RootNavigator />
-        </NavigationContainer>
+        <StatusBar style="light" />
+        <RootNavigator />
       </AuthProvider>
     </ErrorBoundary>
   );
