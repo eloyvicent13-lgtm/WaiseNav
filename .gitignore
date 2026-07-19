@@ -14,3 +14,9 @@ waisenav-expo/*.ipa
 
 # OS / editor
 .DS_Store
+
+# Local debug scratch (crash logs, device diagnostics, working assets)
+*.crash
+*.ips
+/logs/
+/waisenavlogo.png
