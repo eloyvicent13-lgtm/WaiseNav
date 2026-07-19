@@ -6,7 +6,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import NavigationScreen from './src/screens/NavigationScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
-const DIAGNOSTIC_MODE = false;
+const DIAGNOSTIC_MODE = true;
 
 // BISECTION step 2: SecureStore was ruled out (identical crash persisted
 // with it fully removed from the launch path). Same crash signature, same
